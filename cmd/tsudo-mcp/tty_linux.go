@@ -12,8 +12,9 @@ import (
 )
 
 // disableEchoIfTTY disables terminal ECHO on r if r is an *os.File backed by a
-// TTY, preserving ICANON and ISIG. It returns a cleanup function that restores
-// the original Termios once and stops signal monitoring.
+// TTY, preserving ICANON and ISIG. It returns an idempotent cleanup function
+// that restores the original Termios once and stops signal monitoring, making
+// it safe to call multiple times (e.g., via both explicit call and defer).
 func disableEchoIfTTY(r io.Reader) func() {
 	f, ok := r.(*os.File)
 	if !ok {
@@ -32,9 +33,9 @@ func disableEchoIfTTY(r io.Reader) func() {
 		return func() {}
 	}
 
-	var once sync.Once
+	var restoreOnce sync.Once
 	restore := func() {
-		once.Do(func() {
+		restoreOnce.Do(func() {
 			_, _, _ = syscall.Syscall(syscall.SYS_IOCTL, fd, syscall.TCSETS, uintptr(unsafe.Pointer(&orig)))
 		})
 	}
@@ -51,9 +52,12 @@ func disableEchoIfTTY(r io.Reader) func() {
 		}
 	}()
 
+	var cleanupOnce sync.Once
 	return func() {
-		signal.Stop(sigCh)
-		close(doneCh)
-		restore()
+		cleanupOnce.Do(func() {
+			signal.Stop(sigCh)
+			close(doneCh)
+			restore()
+		})
 	}
 }
