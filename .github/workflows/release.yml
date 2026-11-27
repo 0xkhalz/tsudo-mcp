@@ -1,0 +1,95 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Verify formatting, vet, and tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(gofmt -l .)"
+          go vet ./...
+          go test -race -count=1 ./...
+
+      - name: Build and package Linux binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          mkdir -p dist
+          for arch in amd64 arm64; do
+            mkdir -p "dist/stage_${arch}"
+            CGO_ENABLED=0 GOOS=linux GOARCH="${arch}" go build \
+              -trimpath \
+              -ldflags="-s -w -X main.Version=${VERSION}" \
+              -o "dist/stage_${arch}/tsudo-mcp" \
+              ./cmd/tsudo-mcp
+            cp README.md LICENSE "dist/stage_${arch}/"
+            tar -C "dist/stage_${arch}" \
+              -czf "dist/tsudo-mcp_${VERSION}_linux_${arch}.tar.gz" \
+              tsudo-mcp README.md LICENSE
+          done
+          (cd dist && sha256sum tsudo-mcp_"${VERSION}"_linux_*.tar.gz > SHA256SUMS)
+
+      - name: Extract release notes from CHANGELOG
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          mkdir -p dist
+          if [ -f CHANGELOG.md ]; then
+            awk -v ver="${VERSION}" 'index($0, "## [" ver "]") == 1 {found=1; next} found && /^## \[/ {exit} found && /^\[.*\]: http/ {exit} found {print}' CHANGELOG.md > dist/RELEASE_NOTES.md
+          fi
+
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          if [[ "$TAG" == *-* ]]; then
+            prerelease_flag=(--prerelease)
+          else
+            prerelease_flag=()
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" \
+              dist/tsudo-mcp_"${VERSION}"_linux_*.tar.gz \
+              dist/SHA256SUMS \
+              --clobber
+          elif [ -s dist/RELEASE_NOTES.md ] && grep -q '[^[:space:]]' dist/RELEASE_NOTES.md; then
+            gh release create "$TAG" \
+              dist/tsudo-mcp_"${VERSION}"_linux_*.tar.gz \
+              dist/SHA256SUMS \
+              --title "$TAG" \
+              --notes-file dist/RELEASE_NOTES.md \
+              "${prerelease_flag[@]}"
+          else
+            gh release create "$TAG" \
+              dist/tsudo-mcp_"${VERSION}"_linux_*.tar.gz \
+              dist/SHA256SUMS \
+              --title "$TAG" \
+              --generate-notes \
+              "${prerelease_flag[@]}"
+          fi
