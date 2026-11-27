@@ -1,11 +1,11 @@
 # tsudo-mcp
 
-Zero-dependency Go MCP (Model Context Protocol, stdio JSON-RPC 2.0) server and CLI wrapper that lets AI agents execute privileged GNU/Linux commands through `@duyld/tsudo` using a temporary token stored in RAM-only `$XDG_RUNTIME_DIR/tsudo-token` (`0600`), without exposing the user's sudo password or pasting tokens into chat.
+Zero-dependency Go MCP (Model Context Protocol, stdio JSON-RPC 2.0) server and CLI wrapper that lets AI agents execute privileged GNU/Linux commands through [`@duyld/tsudo`](https://github.com/duylddev/tsudo) using a temporary token stored in RAM-only `$XDG_RUNTIME_DIR/tsudo-token` (`0600`), without exposing the user's sudo password or pasting tokens into chat.
 
 ## Prerequisites
 
 - Go 1.27+ (when building from source)
-- `@duyld/tsudo` (`tsudo` on `PATH`)
+- [`@duyld/tsudo`](https://github.com/duylddev/tsudo) (`tsudo` on `PATH`)
 - Linux with `$XDG_RUNTIME_DIR` (RAM-backed `tmpfs`)
 
 ## Installation
