@@ -1,0 +1,4 @@
+/tsudo-mcp
+/dist/
+*.test
+coverage.out
