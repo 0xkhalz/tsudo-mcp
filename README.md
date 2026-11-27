@@ -4,9 +4,33 @@ Zero-dependency Go MCP (Model Context Protocol, stdio JSON-RPC 2.0) server and C
 
 ## Prerequisites
 
-- Go 1.27+
+- Go 1.27+ (when building from source)
 - `@duyld/tsudo` (`tsudo` on `PATH`)
 - Linux with `$XDG_RUNTIME_DIR` (RAM-backed `tmpfs`)
+
+## Installation
+
+### Prebuilt binaries (GitHub Releases)
+
+Download `tsudo-mcp_0.1.0_linux_amd64.tar.gz` (or `tsudo-mcp_0.1.0_linux_arm64.tar.gz`) and `SHA256SUMS` from `https://github.com/0xkhalz/tsudo-mcp/releases`, verify the checksum, extract the archive, and install the binary to `~/.local/bin` or `/usr/local/bin`:
+
+```sh
+sha256sum -c SHA256SUMS --ignore-missing
+tar -xzf tsudo-mcp_0.1.0_linux_amd64.tar.gz
+install -m 0755 tsudo-mcp /usr/local/bin/tsudo-mcp
+```
+
+### From source
+
+```sh
+go install github.com/0xkhalz/tsudo-mcp/cmd/tsudo-mcp@v0.1.0
+```
+
+Or build from a local checkout:
+
+```sh
+go build -trimpath -ldflags="-s -w -X main.Version=0.1.0" ./cmd/tsudo-mcp
+```
 
 ## CLI Usage
 
@@ -14,6 +38,7 @@ Zero-dependency Go MCP (Model Context Protocol, stdio JSON-RPC 2.0) server and C
 - `tsudo-mcp status` — checks active `tsudo` session and token file permissions.
 - `tsudo-mcp clear` — clears `tsudo` session and deletes the token file.
 - `tsudo-mcp serve` (default when run with no args) — runs the stdio MCP server.
+- `tsudo-mcp --version` — prints the installed `tsudo-mcp` version.
 
 ## MCP Tools
 
@@ -34,11 +59,13 @@ Zero-dependency Go MCP (Model Context Protocol, stdio JSON-RPC 2.0) server and C
 
 ## MCP Client Registration Example
 
+Adjust the `command` path to match where you installed `tsudo-mcp` (or use `"tsudo-mcp"` if it is on your `PATH`):
+
 ```json
 {
   "mcpServers": {
     "tsudo": {
-      "command": "/home/khalz/.local/bin/tsudo-mcp",
+      "command": "/usr/local/bin/tsudo-mcp",
       "args": ["serve"]
     }
   }
@@ -48,3 +75,7 @@ Zero-dependency Go MCP (Model Context Protocol, stdio JSON-RPC 2.0) server and C
 ## Development
 
 See [AGENTS.md](AGENTS.md) for toolchain invariants and verification commands, and [docs/plan.md](docs/plan.md) for the phased implementation plan.
+
+## License
+
+Licensed under the MIT License; see [LICENSE](LICENSE).
